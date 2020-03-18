@@ -9,6 +9,10 @@ Estas fontes podem ser: artigos com evidência para modelos meta-analíticos, ba
 
 Procuram-se casos de covid com sintomatologia, localização, contactos, etc... mas também dados de suspeitos não confirmados ou negativo para covid (muito mais difícil de arranjar)
 
-Primeira abordagem: Lista fontes de dados encontradas e verificar as bases de dados listadas do google sheets, fazendo um micro-report (tipo, completeness, protocol, ...) das variáveis incluídas.
+Primeira abordagem: Listar fontes de dados encontradas e verificar as bases de dados listadas do google sheets, fazendo um micro-report (tipo, completeness, protocol, ...) das variáveis incluídas.
 
 Tarefa C: validação de dados e modelos - será necessário ter uma equipa 1) de validação dos dados agregados nessas fontes, e.g. garantir que os tipos de dados são correctamente definidos, conceptualmente representam o que dizem representar, identificar dados omissos e fenómenos de missingness not at random, etc..; e 2) de validação dos modelos desenvolvidos, e.g. avaliar a validade dos modelos desenvolvidos para aceitar a sua nomeação como candidatos a integrar as novas versões do serviço.
+
+## Portugal within the EU
+
+https://rpubs.com/balima78/covid19_pt_eu
