@@ -172,7 +172,3 @@ g6<-ggplot(dados, aes(DateRep,cum_cases_d, color = GeoId)) + geom_point() + geom
   labs(y = "log10 transform - cum Cases / density", color = "Pais")
 
 ggplotly(g6)
-
-
-dados %>% arrange(country,dia) %>% filter(GeoId=="PT") %>% .$dia
-
