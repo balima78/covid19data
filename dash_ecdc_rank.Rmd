@@ -1,0 +1,333 @@
+---
+title: "covid19 - Portugal within the EU"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: cerulean
+    orientation: rows
+    navbar:
+      - { title: "powered by Bruno A Lima", align: right }
+
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(ggbump)
+library(plotly)
+library(DT)
+
+## dados
+# ler dados ecdc: https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
+ecdc20200318 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-03-18.csv") %>% 
+  filter(GeoId %in% c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                      "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK")) %>% 
+  rename("country" = `Countries and territories`)
+
+# informação demografica de: https://www.worldometers.info/population/countries-in-europe-by-population/
+popEU <- read_csv2("dados/2.preparada/popEU.csv")
+
+# calcular soma comulativa e filtrar resultados a partir de 2020-02-20
+dados <- ecdc20200318 %>% arrange(country, DateRep) %>% 
+  group_by(GeoId) %>%
+  mutate(cum_cases = cumsum(Cases)) %>% 
+  filter(DateRep > "2020-02-20") 
+
+# juntar data '21-02-2020' aos paises a que falta
+dados<-bind_rows(dados,
+             data.frame(
+               DateRep = rep(as.Date("2020-02-21"),9),
+               Day = rep(21,9),
+               Month = rep(2,9),
+               Year = rep(2020,9),
+               Cases = rep(0,9),
+               Deaths = rep(0,9),
+               country = c("Portugal","Bulgaria","Cyprus","Hungary","Latvia","Malta","Poland","Slovakia","Slovenia"),
+               GeoId = c("PT","BG","CY","HU","LV","MT","PL","SK","SI"),
+               cum_cases = rep(0,9)
+               )
+)
+
+# calcular casos comulativos por milhão, área e densidade
+dados<-dados %>% left_join(popEU %>% select(GeoId,pop1m, landArea, density)) %>% 
+  mutate(cum_cases_m = round(cum_cases/pop1m,3),
+         cum_cases_a = round(cum_cases/landArea,3),
+         cum_cases_d = round(cum_cases/density,3))
+
+# coluna (dia) com numeração dos dias a partir de 10 casos
+dados10<-dados %>% select(DateRep,GeoId, cum_cases) %>% 
+  filter(cum_cases >=10) %>% arrange(GeoId,DateRep) %>% 
+  group_by(GeoId) %>% mutate(dia = row_number()) %>% ungroup()
+# join a dados
+dados<-dados %>% left_join(dados10 %>% select(DateRep,GeoId, dia), by=c("DateRep","GeoId"))
+
+# coluna (ordem) com rank diario de casos por milhao de habitantes
+dadosOrd<-dados %>% arrange(DateRep,desc(cum_cases_m)) %>% 
+  group_by(DateRep) %>% mutate(ordem = row_number()) %>% ungroup()
+# coluna (ordem) com rank diario de casos por land Area
+dadosOrd2<-dados %>% arrange(DateRep,desc(cum_cases_a)) %>% 
+  group_by(DateRep) %>% mutate(ordem2 = row_number()) %>% ungroup()
+# coluna (ordem) com rank diario de casos por densidade
+dadosOrd3<-dados %>% arrange(DateRep,desc(cum_cases_d)) %>% 
+  group_by(DateRep) %>% mutate(ordem3 = row_number()) %>% ungroup()
+
+```
+
+About
+===================================
+
+Row
+-------------------------------------
+
+### covid19 cases in Portugal
+```{r}
+valor<-max(
+  dados %>% filter(GeoId=="PT") %>% .$cum_cases
+)
+valueBox(valor, icon = "fa-users", 
+         color = "danger")
+
+```
+
+### Updated at
+```{r}
+
+valueBox("2020-03-18", icon = "fa-calendar-alt", 
+         color = "warning")
+
+```
+
+Row
+-------------------------------------
+### Data
+
+Data for covid19 cases in the European Union (EU) + UK is updated from European Centre for Disease Prevention and Control (ecdc), available at:
+
+https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+
+
+Demographic data in the table is available from: 
+
+https://www.worldometers.info/population/countries-in-europe-by-population/
+```{r}
+popEU %>% select(-ln) %>% 
+  datatable()
+```
+
+
+Cases per million inhabitants
+==========================================
+
+Row {.tabset}
+-------------------------------------
+
+### rank of cases
+
+```{r}
+# selecionar as colunas a utilizar
+df<-dadosOrd %>% select(DateRep,ordem, GeoId)
+#grafico
+ggplot(df, aes(DateRep, ordem, color = GeoId)) +
+  geom_point(size = 2) +
+  geom_text(data = df %>% filter(DateRep == min(DateRep)),
+            aes(x = DateRep - .5, label = GeoId), size = 3, hjust = 1) +
+  geom_text(data = df %>% filter(DateRep == max(DateRep)),
+            aes(x = DateRep + .5, label = GeoId), size = 3, hjust = 0) +
+  geom_bump(size = 2, smooth = 8) + theme_bw() +
+  # scale_x_continuous(limits = c(2010.6, 2013.4),
+  #                    breaks = seq(2011, 2013, 1)) +
+  #theme_minimal_grid(font_size = 14, line_size = 0) +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank()) +
+  labs(y = "Rank for cases / million inhabitants",
+       x = NULL,
+       title = "Bump chart with the daily rank of cases by million inhabitants") +
+  scale_y_reverse(breaks = seq(1,28, 1)) +
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6"))
+  
+
+```
+
+### cumulative evolution
+```{r}
+# casos por milhao de habitantes
+g1<-ggplot(dados, aes(DateRep,cum_cases_m, color = GeoId)) + geom_point() + geom_line() +
+  theme_bw() + 
+  #scale_color_grey() + 
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                                     "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                                          values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                                     "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6")) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "cum Cases / million inhabitants", color = "Country",
+       title = "Evolution of daily cumulative cases /  million inhabitants")
+
+  ggplotly(g1)
+```
+
+### Log10 transformation
+```{r}
+g2<-ggplot(dados, aes(DateRep,cum_cases_m, color = GeoId)) + geom_point() + geom_line() +  scale_y_continuous(trans='log10') +
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6")) +
+  theme_bw() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "log10 transform - cum Cases / million inhabitants", color = "Country",
+       title = "Evolution of daily log10 transformation of cumulative cases /  million inhabitants") 
+
+ggplotly(g2)
+```
+
+Cases per Land Area
+==========================================
+
+Row {.tabset}
+-------------------------------------
+
+### rank of cases
+
+```{r}
+# selecionar as colunas a utilizar
+df<-dadosOrd2 %>% select(DateRep,ordem2, GeoId)
+#grafico
+ggplot(df, aes(DateRep, ordem2, color = GeoId)) +
+  geom_point(size = 2) +
+  geom_text(data = df %>% filter(DateRep == min(DateRep)),
+            aes(x = DateRep - .5, label = GeoId), size = 3, hjust = 1) +
+  geom_text(data = df %>% filter(DateRep == max(DateRep)),
+            aes(x = DateRep + .5, label = GeoId), size = 3, hjust = 0) +
+  geom_bump(size = 2, smooth = 8) + theme_bw() +
+  # scale_x_continuous(limits = c(2010.6, 2013.4),
+  #                    breaks = seq(2011, 2013, 1)) +
+  #theme_minimal_grid(font_size = 14, line_size = 0) +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank()) +
+  labs(y = "Rank for cases / land Area",
+       x = NULL,
+       title = "Bump chart with the daily rank of cases by land Area") +
+  scale_y_reverse(breaks = seq(1,28, 1)) +
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6"))
+  
+
+```
+
+### cumulative evolution
+```{r}
+# casos por Area
+g3<-ggplot(dados, aes(DateRep,cum_cases_a, color = GeoId)) + geom_point() + geom_line() +
+  theme_bw() + 
+  #scale_color_grey() + 
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6")) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "cum Cases / Land Area", color = "Country",
+       title = "Evolution of daily cumulative cases /  land Area")
+
+ggplotly(g3)
+```
+
+### Log10 transformation
+```{r}
+g4<-ggplot(dados, aes(DateRep,cum_cases_a, color = GeoId)) + geom_point() + geom_line() +  scale_y_continuous(trans='log10') +
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6")) +
+  theme_bw() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "log10 transform - cum Cases / Land Area", color = "Country",
+       title = "Evolution of daily log10 transformation of cumulative cases /  land Area")
+
+ggplotly(g4)
+```
+
+Cases per populational density
+==========================================
+
+Row {.tabset}
+-------------------------------------
+
+### rank of cases
+
+```{r}
+# selecionar as colunas a utilizar
+df<-dadosOrd3 %>% select(DateRep,ordem3, GeoId)
+#grafico
+ggplot(df, aes(DateRep, ordem3, color = GeoId)) +
+  geom_point(size = 2) +
+  geom_text(data = df %>% filter(DateRep == min(DateRep)),
+            aes(x = DateRep - .5, label = GeoId), size = 3, hjust = 1) +
+  geom_text(data = df %>% filter(DateRep == max(DateRep)),
+            aes(x = DateRep + .5, label = GeoId), size = 3, hjust = 0) +
+  geom_bump(size = 2, smooth = 8) + theme_bw() +
+  # scale_x_continuous(limits = c(2010.6, 2013.4),
+  #                    breaks = seq(2011, 2013, 1)) +
+  #theme_minimal_grid(font_size = 14, line_size = 0) +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank()) +
+  labs(y = "Rank for cases / density",
+       x = NULL,
+       title = "Bump chart with the daily rank of cases by density") +
+  scale_y_reverse(breaks = seq(1,28, 1)) +
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6"))
+  
+
+```
+
+### cumulative evolution
+```{r}
+# casos por densidade populacional
+g5<-ggplot(dados, aes(DateRep,cum_cases_d, color = GeoId)) + geom_point() + geom_line() +
+  theme_bw() + 
+  #scale_color_grey() + 
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6")) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "lcum Cases / density", color = "Country",
+       title = "Evolution of daily cumulative cases /  density")
+
+ggplotly(g5)
+```
+
+### Log10 transformation
+```{r}
+g6<-ggplot(dados, aes(DateRep,cum_cases_d, color = GeoId)) + geom_point() + geom_line() +  scale_y_continuous(trans='log10') +
+  scale_color_manual(breaks = c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
+                                "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK"), 
+                     values = c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6",
+                                "#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6")) +
+  theme_bw() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(y = "log10 transform - cum Cases / density", color = "Country",
+       title = "Evolution of log10 tranformation of daily cumulative cases /  density")
+
+ggplotly(g6)
+```
+
+
