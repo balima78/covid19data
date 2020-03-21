@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # ler dados ecdc: https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
-ecdc20200318 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-03-18.csv") %>% 
+ecdc20200319 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-03-19.csv") %>% 
   filter(GeoId %in% c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
                       "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK")) %>% 
   rename("country" = `Countries and territories`)
@@ -17,10 +17,11 @@ str(popEU)
 str(ecdc20200318)
 
 # calcular soma comulativa e filtrar resultados a partir de 2020-02-20
-dados <- ecdc20200318 %>% arrange(country, DateRep) %>% 
+dados <- ecdc20200319 %>% arrange(country, DateRep) %>% 
   group_by(GeoId) %>%
   mutate(cum_cases = cumsum(Cases)) %>% 
   filter(DateRep > "2020-02-20") 
+
 
 # verificar paises sem data de 21-02-2020
 c21<-dados %>% filter(date == "2020-02-21") %>% .$geoID
