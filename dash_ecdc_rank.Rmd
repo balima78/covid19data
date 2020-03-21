@@ -106,10 +106,10 @@ Data for covid19 cases in the European Union (EU) + UK is updated from European 
 
 https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
 
-
 Demographic data in the table is available from: 
 
 https://www.worldometers.info/population/countries-in-europe-by-population/
+
 ```{r}
 popEU %>% select(-ln) %>% 
   datatable()
