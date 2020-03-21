@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # ler dados ecdc: https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
-ecdc20200319 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-03-19.csv") %>% 
+ecdc20200320 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-03-20.csv") %>% 
   filter(GeoId %in% c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
                       "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK")) %>% 
   rename("country" = `Countries and territories`)
@@ -17,7 +17,7 @@ str(popEU)
 str(ecdc20200318)
 
 # calcular soma comulativa e filtrar resultados a partir de 2020-02-20
-dados <- ecdc20200319 %>% arrange(country, DateRep) %>% 
+dados <- ecdc20200320 %>% arrange(country, DateRep) %>% 
   group_by(GeoId) %>%
   mutate(cum_cases = cumsum(Cases)) %>% 
   filter(DateRep > "2020-02-20") 
@@ -173,3 +173,11 @@ g6<-ggplot(dados, aes(DateRep,cum_cases_d, color = GeoId)) + geom_point() + geom
   labs(y = "log10 transform - cum Cases / density", color = "Pais")
 
 ggplotly(g6)
+
+a<-c("#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","red","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6","#A9A6A6")
+ 
+a == ifelse(unique(dados$GeoId) == "PT","red","#A9A6A6") 
+
+
+length(a)
+length(ifelse(unique(dados$GeoId) == "PT","red","#A9A6A6"))
