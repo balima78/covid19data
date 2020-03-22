@@ -98,13 +98,26 @@ valueBox(hoje, icon = "fa-calendar-alt",
 
 ```
 
-Row
+Row {.tabset}
 -------------------------------------
-### Data
+### Data - covid cases
 
 Data for covid19 cases in the European Union (EU) + UK is updated from European Centre for Disease Prevention and Control (ecdc), available at:
 
 https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
+
+This data is update each morning by the ecdc. Although, for Portugal, the most updated information is available at:
+
+https://covid19estamoson.gov.pt/estatisticas/
+
+
+Other Maps and visuals for covid19 are listed at:
+
+http://www.cidrap.umn.edu/covid-19/maps-visuals
+
+
+
+### Demographic data
 
 Demographic data in the table is available from: 
 
