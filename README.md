@@ -16,3 +16,7 @@ Tarefa C: validação de dados e modelos - será necessário ter uma equipa 1) d
 ## Portugal within the EU
 
 https://rpubs.com/balima78/covid19_pt_eu
+
+## SIR model on shiny
+
+https://balima.shinyapps.io/sir_shiny/
