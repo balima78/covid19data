@@ -17,20 +17,16 @@ source("files/fxs_sir.R")
 ui <- fluidPage(
    
    # Application title
-   titlePanel("S I R model - graphical representation"),
+   titlePanel("S I R model - graphical representation (COMPSTATS exercise)"),
    
    # Sidebar with a slider input for number of bins 
    sidebarLayout(
       sidebarPanel(
-        selectInput("pais", "select country", paises$countries, selected = "Portugal"),
+        selectInput("pais", "select country", paises$countries, 
+                    selected = "Portugal"),
         h6("European Union countries + United Kingdom"),
-        br(),
-        sliderInput("rec",
-                    "Number of recovers:",
-                    min = 0,
-                    max = 100,
-                    value = 10),
-        h6("number of recovers to define day 0"),
+        selectInput("pais2", "select 2nd country", paises$countries, 
+                    selected = "Spain"),
         br(),
         sliderInput("maxt",
                     "maximal number of days:",
@@ -39,8 +35,10 @@ ui <- fluidPage(
                     value = 200),
         h6("maximum number of days to consider"),
         br(),
+        
+        h3("modelling parameters"),
         sliderInput("dias",
-                    "skip days for modeling:",
+                    "skip initial days for modeling:",
                     min = 0,
                     max = 15,
                     value = 0),
@@ -48,19 +46,31 @@ ui <- fluidPage(
         br(),
         submitButton("Apply changes", icon("refresh")),
         h6("All the code and data is available from:"),
-        a(href="https://github.com/balima78/covid19data", "repo")
+        a(href="https://github.com/balima78/covid19data/tree/master/sir_shiny", "repo")
       ),
       
       # Show a plot of the generated distribution
       mainPanel(
+        h4("All the data used here are available from:"),
+        a(href="https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_daily_reports",
+          "2019 Novel Coronavirus COVID-19 (2019-nCoV) Data Repository by Johns Hopkins CSSE"),
+        h5("Only data from March are used, updated to 2020-03-31. For each country, data is filtered for days after first recovered"),
+        br(),
          plotOutput("distPlot"),
          h4("model parameters:"),
          verbatimTextOutput("pars1"), 
          
          h3("Model fitted with data"),
          plotOutput("fitPlot"),
+        p("In ", strong("bold "), "are represented observed data of", 
+          strong("S"), ", ", strong("I"), "and ", strong("R")),
          h4("model parameters:"),
-         verbatimTextOutput("pars2")
+         verbatimTextOutput("pars2"),
+        
+        h3("Model fitted with data for 2nd country"),
+        plotOutput("fitPlot2"),
+        h4("model parameters for 2nd country:"),
+        verbatimTextOutput("pars22")
       )
    )
 )
@@ -72,7 +82,7 @@ server <- function(input, output) {
      # generate out table with inputs from ui.R
      maxtime<-input$maxt
      pp<-input$pais
-     r<-input$rec
+     r<-1
      
      out <- ode(y = parSIR(pais = pp, rec = r)$state,
                 times = seq(0,maxtime,by=1),
@@ -85,16 +95,16 @@ server <- function(input, output) {
    
    output$pars1 <- renderPrint({
      pp<-input$pais
-     r<-input$rec
+     r<-1
      
      parSIR(pais = pp, rec = r)$pars
    })
 
-   ################ plot for model fited with data
+   ################ plot for model 1 fited with data
    #####################################
    newdata<-reactive({
      pp<-input$pais
-     r<-input$rec
+     r<-1
      dd<-input$dias
      
      as.data.frame(parSIR(pais = pp, rec = r)$data %>% 
@@ -106,7 +116,7 @@ server <- function(input, output) {
    Objective <- reactive({
      maxtime<-input$maxt
      pp<-input$pais
-     r<-input$rec
+     r<-1
      
      pars<-parSIR(pais = pp, rec = r)$pars
      tout <- seq(0,maxtime,by=1) ## output times
@@ -127,7 +137,7 @@ server <- function(input, output) {
    # novos parametros
    Fit <- reactive({
      pp<-input$pais
-     r<-input$rec
+     r<-1
      
      pars<-parSIR(pais = pp, rec = r)$pars
      
@@ -140,7 +150,7 @@ server <- function(input, output) {
    out2 <- reactive({
      maxtime<-input$maxt
      pp<-input$pais
-     r<-input$rec
+     r<-1
      
      tout <- seq(0,maxtime,by=1) ## output times
      
@@ -149,18 +159,106 @@ server <- function(input, output) {
                func = SIR, 
                parms = Fit()$par)
    })
+   
    #############################
    
    output$fitPlot <- renderPlot({
      pp<-input$pais
      dd<-input$dias
+     r<-1
      
-     ggsir(data = as.data.frame(out2()), pais = pp, rec = dd, tipo = 2)
+     ggsir(data = as.data.frame(out2()), pais = pp, rec = dd, tipo = 2) + 
+       geom_point(data = parSIR(pais = pp, rec = r)$data, 
+                  aes(x=time, y=S), color = "black") +
+       geom_point(data = parSIR(pais = pp, rec = r)$data, 
+                  aes(x=time, y=R), color = "green") +
+       geom_point(data = parSIR(pais = pp, rec = r)$data, 
+                  aes(x=time, y=I), color = "red")
      })
    
    output$pars2 <- renderPrint({
      Fit()$par
      })
+   
+
+   ################ plot for model 2 fited with data
+   #####################################
+   newdata2<-reactive({
+     pp2<-input$pais2
+     r<-1
+     dd<-input$dias
+     
+     as.data.frame(parSIR(pais = pp2, rec = r)$data %>% 
+                     select(time,S,I,R) %>% 
+                     filter(time>dd))
+   }) 
+   
+   # funcao para modelar o custo
+   Objective2 <- reactive({
+     maxtime<-input$maxt
+     pp2<-input$pais2
+     r<-1
+     
+     pars<-parSIR(pais = pp2, rec = r)$pars
+     tout <- seq(0,maxtime,by=1) ## output times
+     
+     function(x, parset = names(x)) {
+       pars[parset] <- x
+       
+       out <- ode(y = parSIR(pais = pp2, rec = r)$state, 
+                  times = tout, 
+                  func = SIR, 
+                  parms = pars)
+       ## Model cost
+       return(modCost(obs = newdata2(), 
+                      model = out))
+     }
+   })
+   
+   # novos parametros
+   Fit2 <- reactive({
+     pp2<-input$pais2
+     r<-1
+     
+     pars<-parSIR(pais = pp2, rec = r)$pars
+     
+     modFit(p = c(beta = pars$beta, 
+                  gama = pars$gama),
+            f = Objective2())
+   })
+   
+   # dados fited
+   out22 <- reactive({
+     maxtime<-input$maxt
+     pp2<-input$pais2
+     r<-1
+     
+     tout <- seq(0,maxtime,by=1) ## output times
+     
+     ode(y = parSIR(pais = pp2, rec = r)$state,
+         times = tout, 
+         func = SIR, 
+         parms = Fit2()$par)
+   })
+   #############################
+   
+   output$fitPlot2 <- renderPlot({
+     pp2<-input$pais2
+     dd<-input$dias
+     r<-1
+     
+     ggsir(data = as.data.frame(out22()), pais = pp2, rec = dd, tipo = 2) + 
+       geom_point(data = parSIR(pais = pp2, rec = dd)$data, 
+                  aes(x=time, y=S), color = "black") +
+       geom_point(data = parSIR(pais = pp2, rec = dd)$data, 
+                  aes(x=time, y=R), color = "green") +
+       geom_point(data = parSIR(pais = pp2, rec = dd)$data, 
+                  aes(x=time, y=I), color = "red")
+   })
+   
+   output$pars22 <- renderPrint({
+     Fit2()$par
+   })
 }
 
 # Run the application 

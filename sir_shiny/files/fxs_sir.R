@@ -70,8 +70,8 @@ ggsir<-function(data = as.data.frame(out), pais = pp, rec = r, tipo = 1){
 }
 
 # maxtime<-200
-# pp<-"Portugal"
-# r<-20
+# pp<-"Spain"
+# r<-0
 # ###### differential equations ########
 # 
 # out <- ode(y = parSIR(pais = pp, rec = r)$state,
@@ -79,7 +79,9 @@ ggsir<-function(data = as.data.frame(out), pais = pp, rec = r, tipo = 1){
 #            func = SIR,
 #            parms = parSIR(pais = pp, rec = r)$pars)
 # 
-# ggsir()
+# ggsir() + geom_point(data = parSIR(pais = pp, rec = r)$data, aes(x=time, y=S)) +
+#   geom_point(data = parSIR(pais = pp, rec = r)$data, aes(x=time, y=R), color = "green") +
+#   geom_point(data = parSIR(pais = pp, rec = r)$data, aes(x=time, y=I), color = "red")
 # # 
 # # ################
 # # par(las=1,tcl=0.5,mgp=c(3,0.8,0),bty="l")
