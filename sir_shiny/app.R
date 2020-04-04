@@ -8,6 +8,8 @@
 #
 
 library(shiny)
+library(ggplot2)
+library(plotly)
 
 paises<-read.csv2("data/popEU.csv")
 #df_eu<-read_csv("data/df_eu.csv")
@@ -35,7 +37,7 @@ ui <- fluidPage(
                     value = 200),
         h6("maximum number of days to consider"),
         br(),
-        
+        ####################################################
         h3("modelling parameters"),
         sliderInput("dias",
                     "skip initial days for modeling:",
@@ -43,6 +45,9 @@ ui <- fluidPage(
                     max = 15,
                     value = 0),
         h6("initial days on data skiped to fit new parameters"),
+        br(),
+        checkboxInput("checkID", "per population", FALSE),
+        h6("Select to use data as proportion of country population"),
         br(),
         submitButton("Apply changes", icon("refresh")),
         h6("All the code and data is available from:"),
@@ -61,19 +66,25 @@ ui <- fluidPage(
          verbatimTextOutput("pars1"), 
          
          h3("Model fitted with data"),
-         plotOutput("fitPlot"),
+        plotlyOutput("fitPlot"),
         p("In ", strong("bold "), "are represented observed data of", 
           strong("S"), ", ", strong("I"), "and ", strong("R")),
+        p("You can zoom in the plot to see how the real data fit the predictive curve."),
          h4("model parameters:"),
          verbatimTextOutput("pars2"),
         
         h3("Model fitted with data for 2nd country"),
-        plotOutput("fitPlot2"),
+        plotlyOutput("fitPlot2"),
         h4("model parameters for 2nd country:"),
         verbatimTextOutput("pars22")
       )
    )
 )
+
+##############################################################
+#
+#
+#############################################################
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -82,12 +93,13 @@ server <- function(input, output) {
      # generate out table with inputs from ui.R
      maxtime<-input$maxt
      pp<-input$pais
-     r<-1
+     ck<-input$checkID
+     r<-0
      
-     out <- ode(y = parSIR(pais = pp, rec = r)$state,
+     out <- ode(y = parSIR(pais = pp, check = ck, rec = r)$state,
                 times = seq(0,maxtime,by=1),
                 func = SIR,
-                parms = parSIR(pais = pp, rec = r)$pars)
+                parms = parSIR(pais = pp, check = ck, rec = r)$pars)
       
       # draw plot with SIR curves
       ggsir(data = as.data.frame(out), pais = pp, rec = r)
@@ -95,19 +107,21 @@ server <- function(input, output) {
    
    output$pars1 <- renderPrint({
      pp<-input$pais
-     r<-1
+     ck<-input$checkID
+     r<-0
      
-     parSIR(pais = pp, rec = r)$pars
+     parSIR(pais = pp, check = ck,  rec = r)$pars
    })
 
    ################ plot for model 1 fited with data
    #####################################
    newdata<-reactive({
      pp<-input$pais
-     r<-1
+     ck<-input$checkID
+     r<-0
      dd<-input$dias
      
-     as.data.frame(parSIR(pais = pp, rec = r)$data %>% 
+     as.data.frame(parSIR(pais = pp, check = ck,  rec = r)$data %>% 
                      select(time,S,I,R) %>% 
                      filter(time>dd))
    }) 
@@ -116,15 +130,17 @@ server <- function(input, output) {
    Objective <- reactive({
      maxtime<-input$maxt
      pp<-input$pais
-     r<-1
+     ck<-input$checkID
+     r<-0
      
-     pars<-parSIR(pais = pp, rec = r)$pars
+     pars<-parSIR(pais = pp, check = ck,  rec = r)$pars
      tout <- seq(0,maxtime,by=1) ## output times
+     state<-parSIR(pais = pp, check = ck,  rec = r)$state
      
      function(x, parset = names(x)) {
      pars[parset] <- x
      
-     out <- ode(y = parSIR(pais = pp, rec = r)$state, 
+     out <- ode(y = state, 
                 times = tout, 
                 func = SIR, 
                 parms = pars)
@@ -137,9 +153,10 @@ server <- function(input, output) {
    # novos parametros
    Fit <- reactive({
      pp<-input$pais
-     r<-1
+     ck<-input$checkID
+     r<-0
      
-     pars<-parSIR(pais = pp, rec = r)$pars
+     pars<-parSIR(pais = pp, check = ck,  rec = r)$pars
      
      modFit(p = c(beta = pars$beta, 
                        gama = pars$gama),
@@ -150,11 +167,13 @@ server <- function(input, output) {
    out2 <- reactive({
      maxtime<-input$maxt
      pp<-input$pais
-     r<-1
+     ck<-input$checkID
+     r<-0
      
      tout <- seq(0,maxtime,by=1) ## output times
+     state<-parSIR(pais = pp, check = ck,  rec = r)$state
      
-     ode(y = parSIR(pais = pp, rec = r)$state,
+     ode(y = state,
                times = tout, 
                func = SIR, 
                parms = Fit()$par)
@@ -162,18 +181,21 @@ server <- function(input, output) {
    
    #############################
    
-   output$fitPlot <- renderPlot({
+   output$fitPlot <- renderPlotly({
      pp<-input$pais
+     ck<-input$checkID
      dd<-input$dias
-     r<-1
+     r<-0
      
-     ggsir(data = as.data.frame(out2()), pais = pp, rec = dd, tipo = 2) + 
-       geom_point(data = parSIR(pais = pp, rec = r)$data, 
+     gp1<-ggsir(data = as.data.frame(out2()), pais = pp, rec = dd, tipo = 2) + 
+       geom_point(data = parSIR(pais = pp, check = ck,  rec = r)$data, 
                   aes(x=time, y=S), color = "black") +
-       geom_point(data = parSIR(pais = pp, rec = r)$data, 
+       geom_point(data = parSIR(pais = pp, check = ck,  rec = r)$data, 
                   aes(x=time, y=R), color = "green") +
-       geom_point(data = parSIR(pais = pp, rec = r)$data, 
+       geom_point(data = parSIR(pais = pp, check = ck,  rec = r)$data, 
                   aes(x=time, y=I), color = "red")
+     
+     ggplotly(gp1)
      })
    
    output$pars2 <- renderPrint({
@@ -185,10 +207,11 @@ server <- function(input, output) {
    #####################################
    newdata2<-reactive({
      pp2<-input$pais2
-     r<-1
+     ck<-input$checkID
+     r<-0
      dd<-input$dias
      
-     as.data.frame(parSIR(pais = pp2, rec = r)$data %>% 
+     as.data.frame(parSIR(pais = pp2, check = ck, rec = r)$data %>% 
                      select(time,S,I,R) %>% 
                      filter(time>dd))
    }) 
@@ -196,16 +219,18 @@ server <- function(input, output) {
    # funcao para modelar o custo
    Objective2 <- reactive({
      maxtime<-input$maxt
+     ck<-input$checkID
      pp2<-input$pais2
-     r<-1
+     r<-0
      
-     pars<-parSIR(pais = pp2, rec = r)$pars
+     pars<-parSIR(pais = pp2, check = ck, rec = r)$pars
      tout <- seq(0,maxtime,by=1) ## output times
+     state<-parSIR(pais = pp2, check = ck, rec = r)$state
      
      function(x, parset = names(x)) {
        pars[parset] <- x
        
-       out <- ode(y = parSIR(pais = pp2, rec = r)$state, 
+       out <- ode(y = state, 
                   times = tout, 
                   func = SIR, 
                   parms = pars)
@@ -218,9 +243,10 @@ server <- function(input, output) {
    # novos parametros
    Fit2 <- reactive({
      pp2<-input$pais2
-     r<-1
+     ck<-input$checkID
+     r<-0
      
-     pars<-parSIR(pais = pp2, rec = r)$pars
+     pars<-parSIR(pais = pp2, check = ck, rec = r)$pars
      
      modFit(p = c(beta = pars$beta, 
                   gama = pars$gama),
@@ -231,29 +257,33 @@ server <- function(input, output) {
    out22 <- reactive({
      maxtime<-input$maxt
      pp2<-input$pais2
-     r<-1
+     ck<-input$checkID
+     r<-0
      
      tout <- seq(0,maxtime,by=1) ## output times
+     state<-parSIR(pais = pp2, check = ck, rec = r)$state
      
-     ode(y = parSIR(pais = pp2, rec = r)$state,
+     ode(y = state,
          times = tout, 
          func = SIR, 
          parms = Fit2()$par)
    })
    #############################
    
-   output$fitPlot2 <- renderPlot({
+   output$fitPlot2 <- renderPlotly({
      pp2<-input$pais2
+     ck<-input$checkID
      dd<-input$dias
-     r<-1
+     r<-0
      
-     ggsir(data = as.data.frame(out22()), pais = pp2, rec = dd, tipo = 2) + 
-       geom_point(data = parSIR(pais = pp2, rec = dd)$data, 
+     gp2<-ggsir(data = as.data.frame(out22()), pais = pp2, rec = dd, tipo = 2) + 
+       geom_point(data = parSIR(pais = pp2, check = ck, rec = dd)$data, 
                   aes(x=time, y=S), color = "black") +
-       geom_point(data = parSIR(pais = pp2, rec = dd)$data, 
+       geom_point(data = parSIR(pais = pp2, check = ck, rec = dd)$data, 
                   aes(x=time, y=R), color = "green") +
-       geom_point(data = parSIR(pais = pp2, rec = dd)$data, 
+       geom_point(data = parSIR(pais = pp2, check = ck, rec = dd)$data, 
                   aes(x=time, y=I), color = "red")
+     ggplotly(gp2)
    })
    
    output$pars22 <- renderPrint({

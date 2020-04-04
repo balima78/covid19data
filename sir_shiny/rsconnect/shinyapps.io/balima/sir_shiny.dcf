@@ -5,6 +5,6 @@ account: balima
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2051425
-bundleId: 2968971
+bundleId: 2969581
 url: https://balima.shinyapps.io/sir_shiny/
-when: 1586021442.34055
+when: 1586033546.91641

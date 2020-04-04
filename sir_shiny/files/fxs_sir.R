@@ -7,13 +7,24 @@ df_eu<-read_csv("data/df_eu.csv")
 
 ## função com parametros iniciais para SIR a partir de tabela de dados
 
-parSIR<-function(data = df_eu, pais = "Portugal", rec = 0){
+parSIR<-function(data = df_eu, pais = "Portugal", 
+                 check = FALSE,
+                 rec = 0){
   
   require(rlang)
   
+  if(check == FALSE){
   data<-data %>% filter(countries == {{pais}}) %>% 
     select(dia,I,R,S, population) %>% 
     filter(R>rec) 
+  } else if (check == TRUE) {
+    data<-data %>% filter(countries == {{pais}}) %>% 
+    mutate(I = I/population,
+           R = R/population,
+           S = S/population) %>% 
+    select(dia,I,R,S, population) %>% 
+    filter(R>rec)
+    }
   
   data<-data %>% mutate(time = dia - data$dia[1])
   
@@ -41,8 +52,8 @@ parSIR<-function(data = df_eu, pais = "Portugal", rec = 0){
 
 # função SIR com equações diferenciais
 SIR <- function(time = seq(0,maxtime,by=1), 
-                state = parSIR(pais = pp, rec = r)$state, 
-                pars = parSIR(pais = pp, rec = r)$pars, 
+                state = parSIR(pais = pp, check = checkID,  rec = r)$state, 
+                pars = parSIR(pais = pp, check = checkID,  rec = r)$pars, 
                 N = parSIR(pais = pp)$N) { # returns rate of change
   with(as.list(c(state, pars)), {
     dS <- -beta*S*I/N
