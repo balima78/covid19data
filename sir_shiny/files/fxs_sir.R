@@ -9,6 +9,7 @@ df_eu<-read_csv("data/df_eu.csv")
 
 parSIR<-function(data = df_eu, pais = "Portugal", 
                  check = FALSE,
+                 dias = 0,
                  rec = 0){
   
   require(rlang)
@@ -16,14 +17,14 @@ parSIR<-function(data = df_eu, pais = "Portugal",
   if(check == FALSE){
   data<-data %>% filter(countries == {{pais}}) %>% 
     select(dia,I,R,S, population) %>% 
-    filter(R>rec) 
+    filter(R>rec, dia > dias) 
   } else if (check == TRUE) {
     data<-data %>% filter(countries == {{pais}}) %>% 
     mutate(I = I/population,
            R = R/population,
            S = S/population) %>% 
     select(dia,I,R,S, population) %>% 
-    filter(R>rec)
+    filter(R>rec, dia > dias)
     }
   
   data<-data %>% mutate(time = dia - data$dia[1])
@@ -50,18 +51,18 @@ parSIR<-function(data = df_eu, pais = "Portugal",
 
 
 
-# função SIR com equações diferenciais
-SIR <- function(time = seq(0,maxtime,by=1), 
-                state = parSIR(pais = pp, check = checkID,  rec = r)$state, 
-                pars = parSIR(pais = pp, check = checkID,  rec = r)$pars, 
-                N = parSIR(pais = pp)$N) { # returns rate of change
-  with(as.list(c(state, pars)), {
-    dS <- -beta*S*I/N
-    dI <- beta *S*I/N - gama*I
-    dR <- gama*I
-    return(list(c(dS, dI,dR)))
-  })
-}
+# # função SIR com equações diferenciais
+# SIR <- function(time = seq(0,maxtime,by=1), 
+#                 state = parSIR(pais = pp, check = checkID,  rec = r)$state, 
+#                 pars = parSIR(pais = pp, check = checkID,  rec = r)$pars, 
+#                 N = parSIR(pais = pp)$N) { # returns rate of change
+#   with(as.list(c(state, pars)), {
+#     dS <- -beta*S*I/N
+#     dI <- beta *S*I/N - gama*I
+#     dR <- gama*I
+#     return(list(c(dS, dI,dR)))
+#   })
+# }
 
 
 ### plot SIR
@@ -73,8 +74,8 @@ ggsir<-function(data = as.data.frame(out), pais = pp, rec = r, tipo = 1){
     scale_color_manual(values = c("Susceptible" = "Black", "Infected" = "Red", "Recovered" = "Green")) +
     ggtitle(paste("SIR model for", pais)) +
     xlab(if(tipo == 1){
-      paste("days after", rec, "recovers")} else {
-        paste("modeled days, after skipping",rec, "days")}
+      paste("days after first recover")} else {
+        paste("modelled days, after skipping",rec, "days")}
     ) + 
     ylab("population") + 
     theme_bw() + theme(legend.title = element_blank())
