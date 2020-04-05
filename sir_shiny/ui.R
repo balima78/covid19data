@@ -41,7 +41,8 @@ fluidPage(
       br(),
       submitButton("Apply changes", icon("refresh")),
       h6("All the code and data is available from:"),
-      a(href="https://github.com/balima78/covid19data/tree/master/sir_shiny", "repo")
+      a(href="https://github.com/balima78/covid19data/tree/master/sir_shiny", "my repo"),
+      h5("powered by Bruno A Lima")
     ),
     
     # Show a plot of the generated distribution
