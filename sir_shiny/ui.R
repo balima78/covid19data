@@ -23,7 +23,7 @@ fluidPage(
       sliderInput("maxt",
                   "maximal number of days:",
                   min = 100,
-                  max = 1000,
+                  max = 365,
                   value = 200),
       h6("maximum number of days to consider"),
       br(),

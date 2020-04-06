@@ -18,7 +18,7 @@ library(DT)
 
 ## dados
 # ler dados ecdc: https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
-ecdc20200405 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-04-05.csv") %>% 
+ecdc20200406 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-04-06.csv") %>% 
   filter(GeoId %in% c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
                       "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK")) %>% 
   rename("country" = `Countries and territories`)
@@ -27,7 +27,7 @@ ecdc20200405 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-w
 popEU <- read_csv2("dados/2.preparada/popEU.csv")
 
 # calcular soma comulativa e filtrar resultados a partir de 2020-02-20
-dados <- ecdc20200405 %>% arrange(country, DateRep) %>% 
+dados <- ecdc20200406 %>% arrange(country, DateRep) %>% 
   group_by(GeoId) %>%
   mutate(cum_cases = cumsum(Cases),
          cum_deaths = cumsum(Deaths),
