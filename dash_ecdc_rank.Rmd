@@ -18,36 +18,54 @@ library(DT)
 
 ## dados
 # ler dados ecdc: https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
-ecdc20201214 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-12-14.csv") %>% 
+# ecdc20201214 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-12-14.csv")
+# a partir de 2020-12-14 usados dados de: https://covid19datahub.io/articles/data.html
+# https://storage.covid19datahub.io/data-1.csv 
+covid19datahub20201221 <- read_csv2("dados/2.preparada/data-1-2020-12-21.csv") %>% 
+  select(date,confirmed, deaths, iso_alpha_2, iso_alpha_3, 
+         population, administrative_area_level_1) %>% 
+  rename(GeoId = iso_alpha_2,
+         DateRep = date,
+         country = administrative_area_level_1) %>% 
+  mutate(Day = str_sub(DateRep,start = 9, end = 10),
+         Month = str_sub(DateRep,start = 6, end = 7),
+         Year = str_sub(DateRep,start = 1, end = 4)) %>% 
   filter(GeoId %in% c("AT","BE","BG","CY","CZ","DE","DK","EE","EL","ES","FI","FR","HR","HU",
-                      "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK")) %>% 
-  rename("country" = `Countries and territories`)
+                      "IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK","UK")) %>%
+  group_by(GeoId) %>% 
+  mutate(confirmed.last = lag(confirmed, order_by = DateRep),
+         deaths.last = lag(deaths, order_by = DateRep)) %>% ungroup() %>% 
+  mutate(Cases = confirmed-confirmed.last,
+         Deaths = deaths - deaths.last)
+         
+  #%>% 
+#  rename("country" = `Countries and territories`)
 
 # informação demografica de: https://www.worldometers.info/population/countries-in-europe-by-population/
 popEU <- read_csv2("dados/2.preparada/popEU.csv")
 
-# calcular soma comulativa e filtrar resultados a partir de 2020-02-20
-dados <- ecdc20201214 %>% arrange(country, DateRep) %>% 
+# calcular soma comulativa e filtrar resultados a partir de 2020-04-01
+dados <- covid19datahub20201221 %>% arrange(country, DateRep) %>% 
   group_by(GeoId) %>%
-  mutate(cum_cases = cumsum(Cases),
-         cum_deaths = cumsum(Deaths),
+  mutate(cum_cases = confirmed, #cumsum(Cases)
+         cum_deaths = deaths, #cumsum(Deaths)
          CFR = round(cum_deaths/cum_cases * 100,1)) %>% 
-  filter(DateRep > "2020-02-20") 
+  filter(DateRep > "2020-04-01") 
 
-# juntar data '21-02-2020' aos paises a que falta
-dados<-bind_rows(dados,
-             data.frame(
-               DateRep = rep(as.Date("2020-02-21"),9),
-               Day = rep(21,9),
-               Month = rep(2,9),
-               Year = rep(2020,9),
-               Cases = rep(0,9),
-               Deaths = rep(0,9),
-               country = c("Portugal","Bulgaria","Cyprus","Hungary","Latvia","Malta","Poland","Slovakia","Slovenia"),
-               GeoId = c("PT","BG","CY","HU","LV","MT","PL","SK","SI"),
-               cum_cases = rep(0,9)
-               )
-)
+# # juntar data '21-02-2020' aos paises a que falta
+# dados<-bind_rows(dados,
+#              data.frame(
+#                DateRep = rep(as.Date("2020-02-21"),9),
+#                Day = rep(21,9),
+#                Month = rep(2,9),
+#                Year = rep(2020,9),
+#                Cases = rep(0,9),
+#                Deaths = rep(0,9),
+#                country = c("Portugal","Bulgaria","Cyprus","Hungary","Latvia","Malta","Poland","Slovakia","Slovenia"),
+#                GeoId = c("PT","BG","CY","HU","LV","MT","PL","SK","SI"),
+#                cum_cases = rep(0,9)
+#                )
+# )
 
 # calcular casos comulativos por milhão, área e densidade
 dados<-dados %>% left_join(popEU %>% select(GeoId,pop1m, landArea, density)) %>% 
@@ -104,11 +122,17 @@ Row {.tabset}
 -------------------------------------
 ### Data - covid cases
 
-Data for covid19 cases in the European Union (EU) + UK is updated from European Centre for Disease Prevention and Control (ecdc), available at:
+Data for covid19 cases in the European Union (EU) + UK was updated from European Centre for Disease Prevention and Control (ecdc), available at:
 
 https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
 
-This data is update each morning by the ecdc. Although, for Portugal, the most updated information is available at:
+The downloadable data file was updated daily to 14 December 2020 using the latest available public data on COVID-19.
+
+After that date, data used is dowloaded from: https://covid19datahub.io/articles/data.html
+
+[The R Consortium’s COVID-19 Working Group is providing a new home for the COVID-19 Data Hub Project. The goal of the COVID-19 Data Hub is to provide the worldwide research community with a unified dataset by collecting worldwide fine-grained case data, merged with external variables helpful for a better understanding of COVID-19.](https://www.r-consortium.org/blog/2020/12/14/r-consortium-providing-financial-support-to-covid-19-data-hub-platform)
+
+Although, for Portugal, the most updated information is available at:
 
 https://covid19estamoson.gov.pt/estatisticas/
 
