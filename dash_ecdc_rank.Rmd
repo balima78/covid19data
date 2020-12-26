@@ -18,7 +18,7 @@ library(DT)
 
 ## dados
 # ler dados ecdc: https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
-# ecdc20201214 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-12-14.csv")
+# ecdc20201214 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-12-14.csv")  
 # a partir de 2020-12-14 usados dados de: https://covid19datahub.io/articles/data.html 
 covid19datahub20201226 <- read_csv("dados/2.preparada/data-1-2020-12-26.csv") %>% 
   select(date,confirmed, deaths, iso_alpha_2, iso_alpha_3, 
