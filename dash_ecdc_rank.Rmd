@@ -20,7 +20,7 @@ library(DT)
 # ler dados ecdc: https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
 # ecdc20201214 <- read_csv2("dados/2.preparada/COVID-19-geographic-disbtribution-worldwide-2020-12-14.csv")  
 # a partir de 2020-12-14 usados dados de: https://covid19datahub.io/articles/data.html 
-covid19datahub20210123 <- read_csv("dados/2.preparada/data-1-2021-01-23.csv") %>% 
+covid19datahub20210221 <- read_csv("dados/2.preparada/data-1-2021-02-21.csv") %>% 
   select(date,confirmed, deaths, iso_alpha_2, iso_alpha_3, 
          population, administrative_area_level_1) %>% 
   rename(GeoId = iso_alpha_2,
@@ -44,7 +44,7 @@ covid19datahub20210123 <- read_csv("dados/2.preparada/data-1-2021-01-23.csv") %>
 popEU <- read_csv2("dados/2.preparada/popEU.csv")
 
 # calcular soma comulativa e filtrar resultados a partir de 2020-04-01
-dados <- covid19datahub20210123 %>% arrange(country, DateRep) %>% 
+dados <- covid19datahub20210221 %>% arrange(country, DateRep) %>% 
   group_by(GeoId) %>%
   mutate(cum_cases = confirmed, #cumsum(Cases)
          cum_deaths = deaths, #cumsum(Deaths)
